@@ -1,6 +1,6 @@
-/* IN THE VOID — offline cache + reliable native PDF fix loader */
-const CACHE_NAME='in-the-void-offline-v5';
-const APP_SHELL=['./','./index.html','./2.html','./app/index.html','./manifest.webmanifest','./sw.js','./site-fixes.js'];
+/* IN THE VOID — offline cache + PDF viewer bridge loader */
+const CACHE_NAME='in-the-void-offline-v6';
+const APP_SHELL=['./','./index.html','./2.html','./app/index.html','./manifest.webmanifest','./sw.js','./site-fixes.js','./pdf-viewer.html','./download-only.html'];
 const HTML_FIX_PATHS=['/app/index.html','/admin-manager.html','/admin-videos.html'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(APP_SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -12,7 +12,7 @@ async function withFixes(response,url){
     let html=await response.text();
     html=html.replace(/<script[^>]*site-fixes\.js[^>]*><\/script>/gi,'');
     const fixSrc=url.pathname.endsWith('/app/index.html')?'../site-fixes.js':'./site-fixes.js';
-    const injected=html.replace('</body>',`<script src="${fixSrc}?v=5"></script></body>`);
+    const injected=html.replace('</body>',`<script src="${fixSrc}?v=6"></script></body>`);
     const headers=new Headers(response.headers);headers.set('content-type','text/html; charset=UTF-8');
     return new Response(injected,{status:response.status,statusText:response.statusText,headers});
   }catch(_){return response;}
