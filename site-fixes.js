@@ -21,7 +21,7 @@
   }
 
   function installUnsupportedDownloadPage(){
-    if(typeof window.openMaterialViewer!=='function' || typeof window.midadMediaType!=='function' || typeof window.midadEscapeAttr!=='function') return;
+    if(typeof window.openMaterialViewer!=='function' || typeof window.midadMediaType!=='function' || typeof window.midadGetMaterialUrl!=='function') return;
     if(window.openMaterialViewer.__inVoidWrapped) return;
     const original=window.openMaterialViewer;
     async function wrapped(item){
@@ -30,15 +30,10 @@
       const type=window.midadMediaType(path,name);
       if(type==='unknown' && path){
         try{
-          let url=path;
-          if(!/^https?:\/\//i.test(path)){
-            const result=await window.sb.storage.from('materials').createSignedUrl(path,3600);
-            if(result.error) throw result.error;
-            url=result.data?.signedUrl || '';
-          }
-          if(!url) throw new Error('تعذر الوصول إلى الملف');
+          const result=await window.midadGetMaterialUrl(path,type,name);
+          if(!result?.url) throw new Error('تعذر الوصول إلى الملف');
           const page=new URL('/download-only.html',window.location.origin);
-          page.searchParams.set('url',url);
+          page.searchParams.set('url',result.url);
           page.searchParams.set('name',name);
           window.location.assign(page.href);
           return;
