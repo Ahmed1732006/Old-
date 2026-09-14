@@ -199,6 +199,14 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+        // لو الصفحة مفتوحة جوه iframe من الموقع، شريط الموقع الأساسي أصلاً موجود فوق
+        // فبنخفي شريط العارض ده عشان مايتكررش، والفتح المباشر (زي Gemini) يفضل زي ما هو بدون أي تغيير
+        if (window.self !== window.top) {
+            document.querySelector('.viewer-header').style.display = 'none';
+            document.getElementById('upload-section').style.marginTop = '0';
+            document.getElementById('pdf-images-container').style.marginTop = '0';
+        }
+
         let currentPdfBlobUrl = null;
 
         function handleFileSelect(event) {
