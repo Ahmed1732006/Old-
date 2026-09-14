@@ -9,18 +9,29 @@ const APP_SHELL = [
   './manifest.json',
   './sw.js'
 ];
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+  );
 });
+
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+    )).then(() => self.clients.claim())
+  );
 });
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
   event.respondWith((async () => {
     try {
       const fresh = await fetch(req);
+      // Cache same-origin app assets and successful cross-origin scripts/styles.
       if (fresh && (fresh.ok || fresh.type === 'opaque')) {
         const cache = await caches.open(CACHE_NAME);
         try { await cache.put(req, fresh.clone()); } catch (_) {}
