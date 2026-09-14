@@ -1,14 +1,123 @@
-/* IN THE VOID — live fixes */
+/* IN THE VOID — PDF viewer fix only. No admin/member back-button changes. */
 (function(){
-'use strict';
-const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-const WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const style=document.createElement('style');style.textContent='.spf-overlay{position:fixed;inset:0;z-index:999999;background:#17191f;display:flex;align-items:center;justify-content:center}.spf-box{width:100%;height:100%;display:flex;flex-direction:column;background:#17191f;color:#fff}.spf-head{min-height:58px;background:#0b1429;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;gap:8px}.spf-head b{font:800 18px Cairo,Tahoma,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.spf-head button,.spf-tools button{border:0;border-radius:12px;background:#29354e;color:#fff;padding:10px 14px;font-weight:800;font-size:14px}.spf-tools{display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;background:#111827}.spf-scroll{flex:1;overflow:auto;padding:12px;touch-action:pan-x pan-y;background:#202228}.spf-page{display:flex;justify-content:center;margin:0 auto 12px}.spf-page canvas{background:#fff;max-width:none;box-shadow:0 2px 12px #0008}.spf-loading{display:grid;place-items:center;min-height:50vh;text-align:center;color:#dbe3f0;font-weight:700;padding:30px}.spf-close{font-size:25px;line-height:1;width:44px;height:44px}';document.head.appendChild(style);
-function addBack(){const p=location.pathname;if(!/\/(admin-manager|admin-videos)\.html$/.test(p)||document.querySelector('[data-site-back]'))return;const host=document.querySelector('.header-actions')||document.querySelector('.brandbar > div:last-child');if(!host)return;const a=document.createElement('a');a.href='./app/index.html';a.dataset.siteBack='1';a.className=p.endsWith('admin-videos.html')?'header-btn':'btn-gray';a.style.cssText='text-decoration:none;display:inline-flex;align-items:center;gap:7px';a.innerHTML='↩️ <span>رجوع للتطبيق</span>';host.insertBefore(a,host.firstChild)}
-function loadPdfJs(){if(window.pdfjsLib)return Promise.resolve();return new Promise((r,j)=>{const s=document.createElement('script');s.src=PDFJS;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
-function close(){document.getElementById('site-pdf-direct')?.remove()}
-async function openPdf(url,title){close();const ov=document.createElement('div');ov.id='site-pdf-direct';ov.className='spf-overlay';ov.innerHTML='<div class="spf-box" dir="rtl"><div class="spf-head"><b></b><div><button data-spf-ext>فتح في برنامج آخر</button> <button class="spf-close" data-spf-close>×</button></div></div><div class="spf-tools"><button data-spf-minus>−</button><span>جاري فتح PDF…</span><button data-spf-plus>+</button></div><div class="spf-scroll"><div class="spf-loading">جاري فتح الملف مباشرة…</div></div></div></div>';document.body.appendChild(ov);ov.querySelector('b').textContent=title||'PDF';ov.querySelector('[data-spf-close]').onclick=close;ov.querySelector('[data-spf-ext]').onclick=()=>window.open(url,'_blank','noopener,noreferrer');let zoom=1;const scroll=ov.querySelector('.spf-scroll');async function render(){await loadPdfJs();window.pdfjsLib.GlobalWorkerOptions.workerSrc=WORKER;const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('تعذر قراءة ملف PDF');const buf=await r.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;scroll.innerHTML='';ov.querySelector('.spf-tools span').textContent=pdf.numPages+' صفحة';for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),base=page.getViewport({scale:1}),scale=Math.max(.5,Math.min(3,(Math.min(innerWidth-30,1000)/base.width)*zoom)),vp=page.getViewport({scale}),w=document.createElement('div');w.className='spf-page';const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);w.appendChild(c);scroll.appendChild(w);await page.render({canvasContext:c.getContext('2d',{alpha:false}),viewport:vp}).promise}}ov.querySelector('[data-spf-plus]').onclick=()=>{zoom=Math.min(3,zoom+.25);render().catch(()=>{})};ov.querySelector('[data-spf-minus]').onclick=()=>{zoom=Math.max(.5,zoom-.25);render().catch(()=>{})};try{await render()}catch(e){scroll.innerHTML='<div class="spf-loading">تعذر فتح PDF مباشرة.<br><br>'+String(e.message||'خطأ')+'</div>'}}
-function getPath(el){return el?.dataset?.file||el?.closest('[data-file]')?.dataset?.file||''}
-document.addEventListener('click',async function(e){const el=e.target.closest?.('[data-act="open-material"]');if(!el)return;const path=getPath(el),name=el.dataset.name||'PDF';if(!/\.pdf(?:$|\?)/i.test(path)&&!/\.pdf$/i.test(name))return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();try{let url=path;if(!/^https?:\/\//i.test(path)){const client=window.sb;if(!client?.storage)throw Error('تعذر الاتصال بالتخزين');const r=await client.storage.from('materials').createSignedUrl(path,3600);if(r.error)throw r.error;url=r.data?.signedUrl||''}if(!url)throw Error('الملف غير متاح');await openPdf(url,name)}catch(err){alert(err.message||'تعذر فتح PDF')}},true);
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBack);else addBack();setTimeout(addBack,700);setTimeout(addBack,1800)
+  'use strict';
+  if(window.__inVoidPdfFixV2) return;
+  window.__inVoidPdfFixV2=true;
+
+  const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  let pdfJsPromise=null;
+
+  const css=document.createElement('style');
+  css.textContent=`
+    .midad-media-pdf{display:none!important}
+    .iv-pdf-stage{position:relative;width:100%;height:100%;min-height:0;background:#202228;overflow:hidden}
+    .iv-pdf-scroll{width:100%;height:100%;overflow:auto;box-sizing:border-box;padding:12px 8px 28px;touch-action:pan-x pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+    .iv-pdf-page{display:flex;justify-content:center;margin:0 auto 12px}
+    .iv-pdf-page canvas{display:block;background:#fff;height:auto;max-width:none;box-shadow:0 2px 14px rgba(0,0,0,.42)}
+    .iv-pdf-tools{position:absolute;z-index:8;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:13px;background:rgba(10,17,32,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 22px rgba(0,0,0,.28)}
+    .iv-pdf-tools button{width:38px;height:38px;border:0;border-radius:10px;background:#29354e;color:#fff;font:900 21px/1 Arial,sans-serif;cursor:pointer}
+    .iv-pdf-tools span{min-width:62px;color:#e5edf8;text-align:center;font:800 11px Cairo,Tahoma,sans-serif}
+    .iv-pdf-loading{min-height:45vh;display:grid;place-items:center;text-align:center;color:#dbe3f0;font:800 14px Cairo,Tahoma,sans-serif;padding:30px}
+  `;
+  document.head.appendChild(css);
+
+  function loadPdfJs(){
+    if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if(pdfJsPromise) return pdfJsPromise;
+    pdfJsPromise=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src=PDFJS;
+      s.async=true;
+      s.onload=()=>window.pdfjsLib?resolve(window.pdfjsLib):reject(new Error('تعذر تحميل عارض PDF'));
+      s.onerror=()=>reject(new Error('تعذر تحميل مكتبة PDF'));
+      document.head.appendChild(s);
+    });
+    return pdfJsPromise;
+  }
+
+  async function renderPdf(container){
+    if(!container || container.dataset.ivRendered==='1' || container.dataset.ivBusy==='1') return;
+    const url=container.dataset.ivPdfUrl||'';
+    if(!url || url==='about:blank') return;
+    container.dataset.ivBusy='1';
+    try{
+      const pdfjs=await loadPdfJs();
+      pdfjs.GlobalWorkerOptions.workerSrc=WORKER;
+      const r=await fetch(url,{cache:'no-store'});
+      if(!r.ok) throw new Error('تعذر قراءة ملف PDF');
+      const bytes=new Uint8Array(await r.arrayBuffer());
+      const pdf=await pdfjs.getDocument({data:bytes}).promise;
+      const zoom=window.__inVoidPdfZoom||1;
+      const width=Math.max(260,Math.min(window.innerWidth-28,1100));
+      container.innerHTML='';
+      for(let n=1;n<=pdf.numPages;n++){
+        const page=await pdf.getPage(n);
+        const base=page.getViewport({scale:1});
+        const scale=Math.max(.55,Math.min(3.5,(width/base.width)*zoom));
+        const vp=page.getViewport({scale});
+        const holder=document.createElement('div');
+        holder.className='iv-pdf-page';
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.ceil(vp.width);
+        canvas.height=Math.ceil(vp.height);
+        holder.appendChild(canvas);
+        container.appendChild(holder);
+        await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport:vp}).promise;
+      }
+      container.dataset.ivRendered='1';
+      container.dataset.ivBusy='0';
+      const count=document.querySelector('[data-iv-pdf-count]');
+      if(count) count.textContent=pdf.numPages+' صفحة';
+    }catch(err){
+      container.dataset.ivBusy='0';
+      container.innerHTML='<div class="iv-pdf-loading">تعذر فتح ملف PDF مباشرة.<br><br>'+String(err&&err.message||'حدث خطأ')+'</div>';
+    }
+  }
+
+  function replaceNativePdf(){
+    document.querySelectorAll('.midad-media-pdf').forEach(frame=>{
+      const body=frame.closest('.midad-media-viewer-body');
+      if(!body || body.querySelector('[data-iv-pdf-container]')) return;
+      const url=frame.getAttribute('src')||frame.src||'';
+      frame.style.display='none';
+      const stage=document.createElement('div');
+      stage.className='iv-pdf-stage';
+      const tools=document.createElement('div');
+      tools.className='iv-pdf-tools';
+      tools.innerHTML='<button type="button" data-iv-zoom-out aria-label="تصغير">−</button><span data-iv-pdf-count>جاري الفتح…</span><button type="button" data-iv-zoom-in aria-label="تكبير">+</button>';
+      const scroll=document.createElement('div');
+      scroll.className='iv-pdf-scroll';
+      scroll.setAttribute('data-iv-pdf-container','1');
+      scroll.dataset.ivPdfUrl=url;
+      scroll.innerHTML='<div class="iv-pdf-loading">جاري فتح الملف مباشرة…</div>';
+      stage.appendChild(tools);
+      stage.appendChild(scroll);
+      body.insertBefore(stage,frame);
+      renderPdf(scroll);
+    });
+  }
+
+  document.addEventListener('click',e=>{
+    const plus=e.target.closest?.('[data-iv-zoom-in]');
+    const minus=e.target.closest?.('[data-iv-zoom-out]');
+    if(!plus&&!minus) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const old=Number(window.__inVoidPdfZoom)||1;
+    window.__inVoidPdfZoom=Math.max(.75,Math.min(2.5,old+(plus?.dataset?.ivZoomIn!==undefined?0.25:-0.25)));
+    document.querySelectorAll('[data-iv-pdf-container]').forEach(c=>{
+      c.dataset.ivRendered='';
+      c.innerHTML='<div class="iv-pdf-loading">جاري إعادة ضبط الحجم…</div>';
+      renderPdf(c);
+    });
+  },true);
+
+  const observer=new MutationObserver(()=>replaceNativePdf());
+  const start=()=>{
+    replaceNativePdf();
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src','class']});
+    setInterval(replaceNativePdf,700);
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
 })();
