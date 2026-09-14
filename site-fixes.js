@@ -1,56 +1,14 @@
-/* IN THE VOID — live-site fixes injected by sw.js */
+/* IN THE VOID — live fixes */
 (function(){
-  'use strict';
-  const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-  const PDFWORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  let pdfScale=1;
-  function addBackButton(){
-    const path=location.pathname;
-    if(!/\/(admin-manager|admin-videos)\.html$/.test(path)) return;
-    const actions=document.querySelector('.header-actions, .brandbar > div:last-child');
-    if(!actions || actions.querySelector('[data-site-fix-back]')) return;
-    const a=document.createElement('a'); a.href='./app/index.html'; a.dataset.siteFixBack='1';
-    a.className=location.pathname.endsWith('admin-videos.html')?'header-btn':'btn-gray';
-    a.style.cssText='text-decoration:none;display:inline-flex;align-items:center;gap:7px;';
-    a.innerHTML='<i class="fas fa-arrow-right"></i><span>رجوع للتطبيق</span>'; actions.insertBefore(a,actions.firstChild);
-  }
-  function ensurePdfJs(){
-    if(window.pdfjsLib) return Promise.resolve();
-    return new Promise((resolve,reject)=>{ const old=document.querySelector('script[data-site-fix-pdfjs]');
-      if(old){old.addEventListener('load',()=>resolve());old.addEventListener('error',reject);return;}
-      const s=document.createElement('script');s.src=PDFJS;s.async=true;s.dataset.siteFixPdfjs='1';s.onload=()=>resolve();s.onerror=reject;document.head.appendChild(s);
-    });
-  }
-  function closeShell(){document.getElementById('site-pdf-fix')?.remove();}
-  function openShell(title,url){
-    closeShell(); pdfScale=1;
-    const ov=document.createElement('div'); ov.id='site-pdf-fix';
-    ov.innerHTML=`<div class="site-pdf-fix-box" dir="rtl"><div class="site-pdf-fix-head"><strong></strong><div class="site-pdf-fix-actions"><button type="button" data-pdf-fix-external>فتح في برنامج آخر</button><button type="button" data-pdf-fix-close aria-label="إغلاق">×</button></div></div><div class="site-pdf-fix-tools"><button data-pdf-fix-minus>−</button><span data-pdf-fix-count>جاري فتح PDF…</span><button data-pdf-fix-plus>+</button></div><div class="site-pdf-fix-scroll"><div class="site-pdf-fix-loading">جاري فتح الملف مباشرة…</div></div></div>`;
-    ov.querySelector('strong').textContent=title||'PDF'; document.body.appendChild(ov);
-    ov.querySelector('[data-pdf-fix-close]').onclick=closeShell; ov.addEventListener('click',e=>{if(e.target===ov)closeShell();});
-    ov.querySelector('[data-pdf-fix-external]').onclick=()=>window.open(url,'_blank','noopener,noreferrer');
-    ov.querySelector('[data-pdf-fix-plus]').onclick=()=>{pdfScale=Math.min(3,+(pdfScale+.25).toFixed(2));render(url);};
-    ov.querySelector('[data-pdf-fix-minus]').onclick=()=>{pdfScale=Math.max(.5,+(pdfScale-.25).toFixed(2));render(url);};
-    render(url);
-  }
-  async function render(url){
-    const ov=document.getElementById('site-pdf-fix');if(!ov)return; const scroll=ov.querySelector('.site-pdf-fix-scroll');const count=ov.querySelector('[data-pdf-fix-count]');
-    try{ await ensurePdfJs(); window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFWORKER;
-      const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw new Error('تعذر قراءة ملف PDF');const buf=await res.arrayBuffer();
-      const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;scroll.innerHTML='';count.textContent=`${pdf.numPages} صفحة`;
-      const width=Math.min(window.innerWidth-28,920);
-      for(let n=1;n<=pdf.numPages;n++){if(!document.getElementById('site-pdf-fix'))return;const page=await pdf.getPage(n);const base=page.getViewport({scale:1});const scale=Math.max(.5,Math.min(3,(width/base.width)*pdfScale));const vp=page.getViewport({scale});const wrap=document.createElement('div');wrap.className='site-pdf-fix-page';const canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);wrap.appendChild(canvas);scroll.appendChild(wrap);await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport:vp}).promise;}
-    }catch(err){scroll.innerHTML='<div class="site-pdf-fix-error">'+String(err?.message||'تعذر فتح ملف PDF')+'<br><br>يمكنك استخدام «فتح في برنامج آخر».</div>';count.textContent='تعذر فتح PDF';}
-  }
-  async function resolvePdfPath(path){
-    if(/^https?:\/\//i.test(path))return path; const client=(typeof sb!=='undefined')?sb:window.sb;
-    if(client?.storage){const r=await client.storage.from('materials').createSignedUrl(path,3600);if(r?.error)throw r.error;if(r?.data?.signedUrl)return r.data.signedUrl;}
-    throw new Error('تعذر الوصول إلى ملف PDF');
-  }
-  document.addEventListener('click',async function(e){
-    const el=e.target.closest?.('[data-act="open-material"]');if(!el)return;const path=el.dataset.file||'';const name=el.dataset.name||'PDF';
-    if(!/\.pdf(?:$|\?)/i.test(path)&&!/\.pdf$/i.test(name))return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-    try{openShell(name,await resolvePdfPath(path));}catch(err){alert(err?.message||'تعذر فتح ملف PDF');}
-  },true);
-  window.addEventListener('DOMContentLoaded',addBackButton);setTimeout(addBackButton,500);setTimeout(addBackButton,1500);
+'use strict';
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const style=document.createElement('style');style.textContent='.spf-overlay{position:fixed;inset:0;z-index:999999;background:#17191f;display:flex;align-items:center;justify-content:center}.spf-box{width:100%;height:100%;display:flex;flex-direction:column;background:#17191f;color:#fff}.spf-head{min-height:58px;background:#0b1429;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;gap:8px}.spf-head b{font:800 18px Cairo,Tahoma,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.spf-head button,.spf-tools button{border:0;border-radius:12px;background:#29354e;color:#fff;padding:10px 14px;font-weight:800;font-size:14px}.spf-tools{display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;background:#111827}.spf-scroll{flex:1;overflow:auto;padding:12px;touch-action:pan-x pan-y;background:#202228}.spf-page{display:flex;justify-content:center;margin:0 auto 12px}.spf-page canvas{background:#fff;max-width:none;box-shadow:0 2px 12px #0008}.spf-loading{display:grid;place-items:center;min-height:50vh;text-align:center;color:#dbe3f0;font-weight:700;padding:30px}.spf-close{font-size:25px;line-height:1;width:44px;height:44px}';document.head.appendChild(style);
+function addBack(){const p=location.pathname;if(!/\/(admin-manager|admin-videos)\.html$/.test(p)||document.querySelector('[data-site-back]'))return;const host=document.querySelector('.header-actions')||document.querySelector('.brandbar > div:last-child');if(!host)return;const a=document.createElement('a');a.href='./app/index.html';a.dataset.siteBack='1';a.className=p.endsWith('admin-videos.html')?'header-btn':'btn-gray';a.style.cssText='text-decoration:none;display:inline-flex;align-items:center;gap:7px';a.innerHTML='↩️ <span>رجوع للتطبيق</span>';host.insertBefore(a,host.firstChild)}
+function loadPdfJs(){if(window.pdfjsLib)return Promise.resolve();return new Promise((r,j)=>{const s=document.createElement('script');s.src=PDFJS;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
+function close(){document.getElementById('site-pdf-direct')?.remove()}
+async function openPdf(url,title){close();const ov=document.createElement('div');ov.id='site-pdf-direct';ov.className='spf-overlay';ov.innerHTML='<div class="spf-box" dir="rtl"><div class="spf-head"><b></b><div><button data-spf-ext>فتح في برنامج آخر</button> <button class="spf-close" data-spf-close>×</button></div></div><div class="spf-tools"><button data-spf-minus>−</button><span>جاري فتح PDF…</span><button data-spf-plus>+</button></div><div class="spf-scroll"><div class="spf-loading">جاري فتح الملف مباشرة…</div></div></div></div>';document.body.appendChild(ov);ov.querySelector('b').textContent=title||'PDF';ov.querySelector('[data-spf-close]').onclick=close;ov.querySelector('[data-spf-ext]').onclick=()=>window.open(url,'_blank','noopener,noreferrer');let zoom=1;const scroll=ov.querySelector('.spf-scroll');async function render(){await loadPdfJs();window.pdfjsLib.GlobalWorkerOptions.workerSrc=WORKER;const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('تعذر قراءة ملف PDF');const buf=await r.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;scroll.innerHTML='';ov.querySelector('.spf-tools span').textContent=pdf.numPages+' صفحة';for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),base=page.getViewport({scale:1}),scale=Math.max(.5,Math.min(3,(Math.min(innerWidth-30,1000)/base.width)*zoom)),vp=page.getViewport({scale}),w=document.createElement('div');w.className='spf-page';const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);w.appendChild(c);scroll.appendChild(w);await page.render({canvasContext:c.getContext('2d',{alpha:false}),viewport:vp}).promise}}ov.querySelector('[data-spf-plus]').onclick=()=>{zoom=Math.min(3,zoom+.25);render().catch(()=>{})};ov.querySelector('[data-spf-minus]').onclick=()=>{zoom=Math.max(.5,zoom-.25);render().catch(()=>{})};try{await render()}catch(e){scroll.innerHTML='<div class="spf-loading">تعذر فتح PDF مباشرة.<br><br>'+String(e.message||'خطأ')+'</div>'}}
+function getPath(el){return el?.dataset?.file||el?.closest('[data-file]')?.dataset?.file||''}
+document.addEventListener('click',async function(e){const el=e.target.closest?.('[data-act="open-material"]');if(!el)return;const path=getPath(el),name=el.dataset.name||'PDF';if(!/\.pdf(?:$|\?)/i.test(path)&&!/\.pdf$/i.test(name))return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();try{let url=path;if(!/^https?:\/\//i.test(path)){const client=window.sb;if(!client?.storage)throw Error('تعذر الاتصال بالتخزين');const r=await client.storage.from('materials').createSignedUrl(path,3600);if(r.error)throw r.error;url=r.data?.signedUrl||''}if(!url)throw Error('الملف غير متاح');await openPdf(url,name)}catch(err){alert(err.message||'تعذر فتح PDF')}},true);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBack);else addBack();setTimeout(addBack,700);setTimeout(addBack,1800)
 })();
