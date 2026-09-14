@@ -1,29 +1,64 @@
-/* IN THE VOID — native PDF viewer fix. Images/videos unchanged. */
+/* IN THE VOID — PDF-only viewer bridge. Images and videos stay unchanged. */
 (function(){
   'use strict';
-  if(window.__inVoidNativePdfFix) return;
-  window.__inVoidNativePdfFix=true;
+  if(window.__inVoidPdfBridge) return;
+  window.__inVoidPdfBridge=true;
 
-  // Let Android/Chrome's native PDF viewer render the original PDF.
-  // This preserves the PDF's embedded Arabic fonts/encoding and provides
-  // native pinch-to-zoom and two-finger panning instead of canvas re-rendering.
-  function openNativePdf(frame){
-    if(!frame || frame.dataset.nativePdfOpened==='1') return;
+  function openDedicatedPdf(frame){
+    if(!frame || frame.dataset.inVoidPdfOpened==='1') return;
     const url=frame.getAttribute('src') || frame.src || '';
     if(!url || url==='about:blank') return;
-    frame.dataset.nativePdfOpened='1';
-    window.location.assign(url);
+    frame.dataset.inVoidPdfOpened='1';
+    const title=document.querySelector('.midad-media-viewer-title')?.textContent?.trim() || 'ملف PDF';
+    const viewer=new URL('/pdf-viewer.html',window.location.origin);
+    viewer.searchParams.set('url',url);
+    viewer.searchParams.set('name',title);
+    window.location.assign(viewer.href);
   }
 
   function watchPdf(){
-    document.querySelectorAll('.midad-media-pdf').forEach(openNativePdf);
+    document.querySelectorAll('.midad-media-pdf').forEach(openDedicatedPdf);
   }
 
-  const observer=new MutationObserver(watchPdf);
+  function installUnsupportedDownloadPage(){
+    if(typeof window.openMaterialViewer!=='function' || typeof window.midadMediaType!=='function' || typeof window.midadEscapeAttr!=='function') return;
+    if(window.openMaterialViewer.__inVoidWrapped) return;
+    const original=window.openMaterialViewer;
+    async function wrapped(item){
+      const path=item?.filePath || item?.fileData || '';
+      const name=item?.fileName || item?.name || 'الملف';
+      const type=window.midadMediaType(path,name);
+      if(type==='unknown' && path){
+        try{
+          let url=path;
+          if(!/^https?:\/\//i.test(path)){
+            const result=await window.sb.storage.from('materials').createSignedUrl(path,3600);
+            if(result.error) throw result.error;
+            url=result.data?.signedUrl || '';
+          }
+          if(!url) throw new Error('تعذر الوصول إلى الملف');
+          const page=new URL('/download-only.html',window.location.origin);
+          page.searchParams.set('url',url);
+          page.searchParams.set('name',name);
+          window.location.assign(page.href);
+          return;
+        }catch(e){
+          if(typeof window.showToast==='function') window.showToast(e.message||'تعذر الوصول إلى الملف','error');
+          return;
+        }
+      }
+      return original(item);
+    }
+    wrapped.__inVoidWrapped=true;
+    window.openMaterialViewer=wrapped;
+  }
+
   function start(){
     watchPdf();
-    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});
-    setInterval(watchPdf,500);
+    installUnsupportedDownloadPage();
+    const observer=new MutationObserver(function(){watchPdf();installUnsupportedDownloadPage();});
+    if(document.body) observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});
+    setInterval(function(){watchPdf();installUnsupportedDownloadPage();},500);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
