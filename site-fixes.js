@@ -1,8 +1,13 @@
 /* IN THE VOID — PDF-only viewer bridge. Images and videos stay unchanged. */
 (function(){
   'use strict';
-  if(window.__inVoidPdfBridge) return;
-  window.__inVoidPdfBridge=true;
+  if(window.__inVoidPdfBridgeV2) return;
+  window.__inVoidPdfBridgeV2=true;
+
+  function viewerPath(){
+    const path=window.location.pathname;
+    return /\/app\/index\.html$/.test(path) ? '../pdf-viewer.html' : './pdf-viewer.html';
+  }
 
   function openDedicatedPdf(frame){
     if(!frame || frame.dataset.inVoidPdfOpened==='1') return;
@@ -10,14 +15,17 @@
     if(!url || url==='about:blank') return;
     frame.dataset.inVoidPdfOpened='1';
     const title=document.querySelector('.midad-media-viewer-title')?.textContent?.trim() || 'ملف PDF';
-    const viewer=new URL('/pdf-viewer.html',window.location.origin);
-    viewer.searchParams.set('url',url);
-    viewer.searchParams.set('name',title);
-    window.location.assign(viewer.href);
+    const target=viewerPath()+'?url='+encodeURIComponent(url)+'&name='+encodeURIComponent(title);
+    // Keep this inside the site's existing viewer instead of sending the PDF to Chrome.
+    frame.src=target;
+    frame.removeAttribute('sandbox');
+    frame.style.width='100%';
+    frame.style.height='100%';
+    frame.style.border='0';
   }
 
   function watchPdf(){
-    document.querySelectorAll('.midad-media-pdf').forEach(openDedicatedPdf);
+    document.querySelectorAll('iframe.midad-media-pdf').forEach(openDedicatedPdf);
   }
 
   function installUnsupportedDownloadPage(){
@@ -32,7 +40,7 @@
         try{
           const result=await window.midadGetMaterialUrl(path,type,name);
           if(!result?.url) throw new Error('تعذر الوصول إلى الملف');
-          const page=new URL('/download-only.html',window.location.origin);
+          const page=new URL(viewerPath().replace('pdf-viewer.html','download-only.html'),window.location.href);
           page.searchParams.set('url',result.url);
           page.searchParams.set('name',name);
           window.location.assign(page.href);
