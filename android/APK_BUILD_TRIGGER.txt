@@ -1,0 +1,1 @@
+Trigger a fresh APK build after fixing Android dependencies and app icon preparation.
