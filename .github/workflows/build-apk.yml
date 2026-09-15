@@ -24,6 +24,11 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Prepare Android resources
+        run: |
+          mkdir -p android/app/src/main/res/drawable-nodpi
+          cp 1.png android/app/src/main/res/drawable-nodpi/app_icon.png
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
