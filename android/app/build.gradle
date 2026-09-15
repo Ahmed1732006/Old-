@@ -21,28 +21,16 @@ android {
         }
     }
 
-    // Generate Android resources from the existing repository files before resource processing.
+    // Copy the existing website from the repository root /app into Android assets.
     def webSource = file('../../app')
-    def iconSource = file('../../1.png')
-    def generatedRes = file("$buildDir/generated/in-the-void/res")
     def webTarget = file('src/main/assets')
-    def iconTarget = file("$generatedRes/drawable-nodpi/app_icon.png")
-
-    sourceSets {
-        main.res.srcDir generatedRes
-    }
 
     tasks.register('prepareWebAssets') {
         inputs.dir(webSource)
-        inputs.file(iconSource)
         outputs.dir(webTarget)
-        outputs.file(iconTarget)
         doLast {
             delete webTarget
             copy { from webSource; into webTarget }
-            delete generatedRes
-            iconTarget.parentFile.mkdirs()
-            copy { from iconSource; into iconTarget }
         }
     }
 
@@ -54,12 +42,9 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.12.1'
 }
 
-// Keep Kotlin's JDK extension modules aligned to avoid duplicate-class errors
-// introduced by transitive AndroidX dependencies.
+// AndroidX can bring old Kotlin JDK extension modules transitively.
+// Exclude them because kotlin-stdlib already contains these classes.
 configurations.configureEach {
-    resolutionStrategy {
-        force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
-        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
-        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
-    }
+    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
 }
