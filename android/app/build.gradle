@@ -21,26 +21,21 @@ android {
         }
     }
 
-    // Reuse the existing website in /app and the existing 1.png icon in the repository.
-    def webSource = file('../app')
-    def iconSource = file('../1.png')
+    // Copy the existing website from the repository root /app into Android assets.
+    def webSource = file('../../app')
+    def iconSource = file('../../1.png')
     def webTarget = file('src/main/assets')
     def iconTarget = file('src/main/res/drawable-nodpi/app_icon.png')
 
     tasks.register('prepareWebAssets') {
         inputs.dir(webSource)
+        inputs.file(iconSource)
         outputs.dir(webTarget)
         doLast {
             delete webTarget
-            copy {
-                from webSource
-                into webTarget
-            }
+            copy { from webSource; into webTarget }
             delete iconTarget
-            copy {
-                from iconSource
-                into iconTarget
-            }
+            copy { from iconSource; into iconTarget }
         }
     }
 
