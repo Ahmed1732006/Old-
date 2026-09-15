@@ -1,0 +1,53 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.inthevoid.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.inthevoid.app'
+        minSdk 26
+        targetSdk 28
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        debug { minifyEnabled false }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // Reuse the existing website in /app and the existing 1.png icon in the repository.
+    def webSource = file('../app')
+    def iconSource = file('../1.png')
+    def webTarget = file('src/main/assets')
+    def iconTarget = file('src/main/res/drawable-nodpi/app_icon.png')
+
+    tasks.register('prepareWebAssets') {
+        inputs.dir(webSource)
+        outputs.dir(webTarget)
+        doLast {
+            delete webTarget
+            copy {
+                from webSource
+                into webTarget
+            }
+            delete iconTarget
+            copy {
+                from iconSource
+                into iconTarget
+            }
+        }
+    }
+
+    preBuild.dependsOn tasks.named('prepareWebAssets')
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
